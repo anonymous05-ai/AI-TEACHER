@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna - Your AI English Teacher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(10px); 
+            backdrop-filter: blur(10pxb);
+            backdrop-filter: blur(10px); }
+        .typing-dot { animation: blink 1.4s infinite both; }
+        .typing-dot:nth-child(2) { animation-delay: .2s; }
+        .typing-dot:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
+        /* Hiệu ứng sóng âm khi nói */
+        .recording { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-lg glass rounded-[2rem] shadow-2xl flex flex-col h-[90vh] border border-white">
+        <!-- Header -->
+        <div class="p-6 border-b flex items-center gap-4">
+            <div class="relative">
+                <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xl font-bold">L</div>
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+            </div>
+            <div>
+                <h1 class="font-semibold text-gray-800 text-lg">Teacher Luna</h1>
+                <p class="text-xs text-green-600 font-medium">Online | Ready to help</p>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="flex flex-col items-start">
+                <div class="bg-gray-100 text-gray-800 p-4 rounded-2xl rounded-tl-none max-w-[85%] text-sm shadow-sm">
+                    Hi there! I'm Luna. How can I help you improve your English today?
+                </div>
+            </div>
+        </div>
+
+        <!-- Typing Indicator (Hidden by default) -->
+        <div id="typing" class="hidden px-6 py-2 flex items-center gap-1">
+            <div class="typing-dot w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div class="typing-dot w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div class="typing-dot w-1 h-1 bg-gray-400 rounded-full"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="p-6 border-t bg-white/50 rounded-b-[2rem]">
+            <div class="flex flex-col items-center gap-4">
+                <button id="mic-btn" title="Start speaking" class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition-all transform active:scale-90">
+                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v8a3 3 0 006 0V3a3 3 0 00-3-3z" />
+                    </svg>
+                </button>
+                <p id="hint" class="text-sm text-gray-500 font-medium">Hold to speak English</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const typing = document.getElementById('typing');
+        const hint = document.getElementById('hint');
+
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+
+        micBtn.onmousedown = () => {
+            recognition.start();
+            micBtn.classList.add('recording');
+            hint.innerText = "Listening...";
+        };
+
+        micBtn.onmouseup = () => {
+            recognition.stop();
+            micBtn.classList.remove('recording');
+            hint.innerText = "Processing...";
+        };
+
+        recognition.onresult = async (event) => {
+            const userText = event.results[0][0].transcript;
+            appendMessage('user', userText);
+
+            typing.classList.remove('hidden');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userText })
+                });
+                const data = await response.json();
+                
+                typing.classList.add('hidden');
+                appendMessage('ai', data.text);
+                speak(data.text);
+            } catch (error) {
+                typing.classList.add('hidden');
+                appendMessage('ai', "Sorry, I lost my connection. Please try again!");
+            }
+            hint.innerText = "Hold to speak English";
+        };
+
+        function appendMessage(role, text) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
+            
+            const msg = document.createElement('div');
+            msg.className = role === 'user' 
+                ? 'bg-indigo-600 text-white p-4 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md'
+                : 'bg-white text-gray-800 p-4 rounded-2xl rounded-tl-none max-w-[85%] text-sm shadow-sm border border-gray-100';
+            
+            msg.innerText = text;
+            wrapper.appendChild(msg);
+            chatContainer.appendChild(wrapper);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            // Tùy chọn giọng nữ nếu trình duyệt hỗ trợ
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Female'));
+            if (femaleVoice) utterance.voice = femaleVoice;
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
