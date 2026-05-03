@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 export default async function handler(req, res) {
     // Lấy Key từ cấu hình của Vercel (đã giấu đi)
     const API_KEY = process.env.GEMINI_API_KEY;
