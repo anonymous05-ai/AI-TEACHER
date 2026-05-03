@@ -1,7 +1,11 @@
 {
   "name": "ai-tutor-luna",
   "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
-    "node-fetch": "^3.0.0"
+    "node-fetch": "^3.3.2"
   }
 }
